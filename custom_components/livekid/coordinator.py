@@ -6,6 +6,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
+from . import menu_doc
 from . import parser as P
 from .api import LiveKidAuthError, LiveKidClient
 from .const import (DOMAIN, EVENT_ALBUM, EVENT_ARRIVED, EVENT_BILL, EVENT_MENU, EVENT_MESSAGE, EVENT_NEWS,
@@ -49,12 +50,34 @@ class LiveKidCoordinator(DataUpdateCoordinator):
             "jadlospis": P.menu(menus if isinstance(menus, list) else []),
         }
 
+    async def _menu_days(self, rid: str, menu: dict | None) -> dict:
+        """Treść jadłospisu z pliku Worda; pobierana raz na nowy jadłospis i zapamiętywana."""
+        cache = self._seen.setdefault("_menu_cache", {})
+        if not menu or not menu.get("plik"):
+            return {}
+        mid = menu["id"]
+        if mid in cache:
+            return cache[mid]
+        try:
+            raw = await self.client.download(rid, menu["plik"])
+            days = await self.hass.async_add_executor_job(menu_doc.parse, raw, dt_util.now().date())
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.warning("LiveKid: nie udało się odczytać jadłospisu %s: %s", mid, e)
+            return {}
+        cache.clear()
+        cache[mid] = days
+        return days
+
     async def _async_update_data(self):
         if self._seen is None:
             self._seen = await self._store.async_load() or {}
         try:
             roles = self.client.roles or await self.client.login()
             data = {str(r["id"]): await self._fetch_kid(r) for r in roles}
+            for rid, d in data.items():
+                d["jadlospis_dni"] = await self._menu_days(rid, d["jadlospis"])
+                if d["jadlospis"]:
+                    d["jadlospis"]["dni_menu"] = d["jadlospis_dni"]
         except LiveKidAuthError as e:
             raise ConfigEntryAuthFailed(str(e)) from e
         except Exception as e:  # noqa: BLE001

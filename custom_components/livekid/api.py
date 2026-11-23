@@ -58,3 +58,23 @@ class LiveKidClient:
                     raise LiveKidError(f"{path}: HTTP {r.status}")
                 return await r.json(content_type=None)
         raise LiveKidError(path)
+
+    async def download(self, role_id: str, ref) -> bytes:
+        """Pobiera załącznik (np. jadłospis .doc/.docx). ref: URL, ścieżka API albo obiekt z polem url/path."""
+        if isinstance(ref, dict):
+            ref = ref.get("url") or ref.get("path") or ref.get("link") or ref.get("file") or ref.get("name")
+        if not ref:
+            raise LiveKidError("brak pliku")
+        url = ref if str(ref).startswith("http") else self._base + str(ref).lstrip("/")
+        if not self._jwt:
+            await self.login()
+        hdr = {k: v for k, v in HEADERS.items() if k != "Content-Type"}
+        hdr["Accept"] = "*/*"
+        for headers in ({**hdr, "Authorization": f"Bearer {self._jwt[str(role_id)]}"}, hdr):
+            async with self._s.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=60)) as r:
+                if r.status < 400:
+                    data = await r.read()
+                    if data[:2] == b"PK" or data[:4] == bytes.fromhex("D0CF11E0"):
+                        return data
+                    raise LiveKidError(f"plik nie jest dokumentem Worda ({r.content_type}, {len(data)} B)")
+        raise LiveKidError(f"pobieranie pliku: HTTP {r.status}")

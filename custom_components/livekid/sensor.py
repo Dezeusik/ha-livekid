@@ -1,5 +1,7 @@
 from __future__ import annotations
+from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .entity import KidEntity
 
@@ -7,7 +9,7 @@ from .entity import KidEntity
 async def async_setup_entry(hass, entry, async_add):
     c = hass.data[DOMAIN][entry.entry_id]
     async_add([cls(c, entry, rid) for rid in c.data for cls in
-               (Status, Arrived, PickedUp, Meals, Nap, Report, News, Gallery, Unread, LastBill, Balance, Menu, MonthPresence)])
+               (Status, Arrived, PickedUp, Meals, Nap, Report, News, Gallery, Unread, LastBill, Balance, Menu, MenuToday, MenuTomorrow, MonthPresence)])
 
 
 class _S(KidEntity, SensorEntity):
@@ -183,3 +185,31 @@ class MonthPresence(_S):
     @property
     def extra_state_attributes(self):
         return self.k["miesiac"]
+
+
+class _MenuDay(_S):
+    """Stan = obiad; atrybuty = wszystkie posiłki danego dnia (z pliku jadłospisu)."""
+    offset = 0
+    _attr_icon = "mdi:silverware-fork-knife"
+
+    def _day(self) -> dict:
+        d = dt_util.now().date() + timedelta(days=self.offset)
+        return (self.k.get("jadlospis_dni") or {}).get(d.isoformat()) or {}
+
+    @property
+    def native_value(self):
+        day = self._day()
+        v = day.get("obiad") or day.get("sniadanie")
+        return v[:255] if v else None
+
+    @property
+    def extra_state_attributes(self):
+        return self._day()
+
+
+class MenuToday(_MenuDay):
+    key, _attr_name, offset = "menu_today", "Jadłospis dziś", 0
+
+
+class MenuTomorrow(_MenuDay):
+    key, _attr_name, offset = "menu_tomorrow", "Jadłospis jutro", 1
