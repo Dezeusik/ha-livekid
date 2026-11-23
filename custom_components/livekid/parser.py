@@ -65,7 +65,7 @@ def presence(day: dict | None) -> dict:
         "temperatura": d.get("in_temperature"),
         "posilki": meals, "drzemki": sleeps,
         "notatki": [_txt(n if not isinstance(n, dict) else (n.get("text") or n.get("note") or n), 300) for n in d.get("notes") or []],
-        "raport": _txt(report, 600) or None,
+        "raport": _txt(report, 3000) or None,
         "toalety": len(d.get("toilets") or []),
         "rewizja": d.get("last_revision"),
     }
@@ -80,7 +80,7 @@ def month_stats(month: dict | None) -> dict:
 
 
 def news(items: list | None) -> list[dict]:
-    out = [{"id": str(n.get("id")), "tytul": _txt(n.get("title"), 120), "tresc": _txt(n.get("body"), 500),
+    out = [{"id": str(n.get("id")), "tytul": _txt(n.get("title"), 120), "tresc": _txt(n.get("body"), 4000),
             "data": ms_to_iso(n.get("created_at")), "autor": _txt((n.get("author") or {}).get("display"), 60),
             "zdjec": len(n.get("photos") or []), "przeczytane": bool(n.get("seen"))}
            for n in items or [] if not n.get("draft") and not n.get("trashed")]
@@ -101,7 +101,7 @@ def chats(items: list | None, own_ids: set[str]) -> list[dict]:
         out.append({"id": str(c.get("id")), "nazwa": _txt(c.get("name") or c.get("kid_name"), 80),
                     "nieprzeczytany": c.get("seen") is False, "msg_id": str(lm.get("id") or ""),
                     "od": _txt(lm.get("author_name"), 60), "moja": str(lm.get("author")) in own_ids,
-                    "tekst": _txt(lm.get("text"), 500), "zalacznikow": len(lm.get("attachments") or []),
+                    "tekst": _txt(lm.get("text"), 4000), "zalacznikow": len(lm.get("attachments") or []),
                     "data": ms_to_iso(lm.get("date") or c.get("last_message_date"))})
     return sorted(out, key=lambda x: x["data"] or "", reverse=True)
 

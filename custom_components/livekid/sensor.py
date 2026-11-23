@@ -102,7 +102,8 @@ class News(_S):
     @property
     def extra_state_attributes(self):
         n = self.k["aktualnosci"]
-        return {"nieprzeczytane": sum(not x["przeczytane"] for x in n), "najnowsza": n[0] if n else None, "lista": n[:5]}
+        return {"nieprzeczytane": sum(not x["przeczytane"] for x in n), "najnowsza": n[0] if n else None,
+                "lista": [{**x, "tresc": (x.get("tresc") or "")[:500]} for x in n[:5]]}
 
 
 class Gallery(_S):

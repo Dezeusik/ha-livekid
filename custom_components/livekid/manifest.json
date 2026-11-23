@@ -1,7 +1,7 @@
 {
   "domain": "livekid",
   "name": "LiveKid (przedszkole)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "documentation": "https://github.com/Dezeusik/ha-livekid",
   "issue_tracker": "https://github.com/Dezeusik/ha-livekid/issues",
   "codeowners": ["@Dezeusik"],
